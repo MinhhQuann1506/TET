@@ -550,12 +550,8 @@
   <!-- Floating cherry blossom petals -->
   <div class="petals" id="petals" aria-hidden="true"></div>
 
-  <!-- Background Music for Ngày Xuân Long Phụng Sum Vầy (NhacCuaTui Album) -->
-  <audio id="bgm" loop preload="auto">
-    <source src="audio/ngay-xuan-long-phung-sum-vay.mp3" type="audio/mpeg">
-    <source src="https://stream.nct.vn/NCTSong/2410/27/2c/cixm7ieqs8.mp3?st=6XHGoebN0EQvy1l9TkqUDw&e=1787020801&a=6&p=0&r=89fa70f01609e19949e76f6af2755337" type="audio/mpeg">
-    <source src="https://a01.nct.vn/NCTSong/2410/80/1e/dkndv0dqk3.mp3?st=8TkShKESK5QwRqpAetZMNA&e=1787020801&a=6&p=0&r=89fa70f01609e19949e76f6af2755337" type="audio/mpeg">
-  </audio>
+  <!-- Background Music Playlist Player -->
+  <audio id="bgm" preload="auto"></audio>
 
   <!-- Modal -->
   <div class="modal-overlay" id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title-text">
@@ -784,10 +780,27 @@
     }
 
     /* ============================================
-       AUDIO SYSTEM (SFX + Background Music)
+       AUDIO SYSTEM (SFX + Random 5-Track Playlist)
     ============================================ */
     let audioCtx = null;
     let soundEnabled = true;
+    const PLAYLIST = [
+      'audio/1.mp3',
+      'audio/2.mp3',
+      'audio/3.mp3',
+      'audio/4.mp3',
+      'audio/5.mp3'
+    ];
+    let currentTrackIdx = -1;
+
+    function getRandomTrack() {
+      let nextIdx;
+      do {
+        nextIdx = Math.floor(Math.random() * PLAYLIST.length);
+      } while (nextIdx === currentTrackIdx && PLAYLIST.length > 1);
+      currentTrackIdx = nextIdx;
+      return PLAYLIST[nextIdx];
+    }
 
     function initAudio() {
       if (!audioCtx) {
@@ -803,12 +816,23 @@
     function playBGM() {
       if (!soundEnabled) return;
       const bgm = document.getElementById('bgm');
-      if (bgm && bgm.paused) {
-        bgm.volume = 0.45;
-        bgm.play().catch(() => {
-          // Autoplay blocked until user gesture
-        });
+      if (!bgm) return;
+
+      if (!bgm.getAttribute('src') || bgm.ended) {
+        bgm.src = getRandomTrack();
       }
+
+      bgm.volume = 0.45;
+      bgm.play().catch(() => {
+        // Autoplay blocked until user gesture
+      });
+
+      bgm.onended = () => {
+        if (soundEnabled) {
+          bgm.src = getRandomTrack();
+          bgm.play().catch(() => {});
+        }
+      };
     }
 
     function stopBGM() {
