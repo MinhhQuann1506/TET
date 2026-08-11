@@ -1170,6 +1170,25 @@
       spawnPetals();
       deck = buildDeck();
       renderCards(true); // show face-up preview
+
+      // Auto-start music immediately on page load
+      initAudio();
+      playBGM();
+
+      // Autoplay policy fallback: start music on the very first touch/click anywhere on screen
+      const handleFirstInteraction = () => {
+        initAudio();
+        playBGM();
+        window.removeEventListener('pointerdown', handleFirstInteraction);
+        window.removeEventListener('touchstart', handleFirstInteraction);
+        window.removeEventListener('click', handleFirstInteraction);
+        window.removeEventListener('keydown', handleFirstInteraction);
+      };
+
+      window.addEventListener('pointerdown', handleFirstInteraction, { once: true });
+      window.addEventListener('touchstart', handleFirstInteraction, { once: true });
+      window.addEventListener('click', handleFirstInteraction, { once: true });
+      window.addEventListener('keydown', handleFirstInteraction, { once: true });
     })();
   </script>
 </body>
