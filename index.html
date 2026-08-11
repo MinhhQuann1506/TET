@@ -143,6 +143,23 @@
     }
     .top-bar-titles { display: flex; flex-direction: column; align-items: flex-start; }
 
+    .btn-sound {
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(218,165,32,0.4);
+      color: #FFD700;
+      border-radius: 50%;
+      width: 32px; height: 32px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      cursor: pointer;
+      margin-left: auto;
+      transition: transform 0.15s, background 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn-sound:active { transform: scale(0.88); }
+
     /* ============================================
        BALANCE BAR (sticky at top after top-bar)
     ============================================ */
@@ -546,6 +563,7 @@
         <h1>Lì Xì – Red Envelope</h1>
         <p class="top-bar-sub">Chúc Mừng Năm Mới 🐍 · Happy Lunar New Year</p>
       </div>
+      <button class="btn-sound" id="btn-sound" onclick="toggleSound()" aria-label="Tắt/bật âm thanh" title="Tắt/bật âm thanh">🔊</button>
     </div>
 
     <!-- Sticky balance + controls -->
@@ -750,6 +768,150 @@
     }
 
     /* ============================================
+       AUDIO SYSTEM (Web Audio API Synthesizer)
+    ============================================ */
+    let audioCtx = null;
+    let soundEnabled = true;
+
+    function initAudio() {
+      if (!audioCtx) {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (AudioContext) audioCtx = new AudioContext();
+      }
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+
+    function toggleSound() {
+      soundEnabled = !soundEnabled;
+      const btn = document.getElementById('btn-sound');
+      if (btn) {
+        btn.textContent = soundEnabled ? '🔊' : '🔇';
+      }
+    }
+
+    function playSoundFlip() {
+      if (!soundEnabled) return;
+      initAudio();
+      if (!audioCtx) return;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(450, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(130, audioCtx.currentTime + 0.08);
+      gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.08);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.08);
+    }
+
+    function playSoundCash() {
+      if (!soundEnabled) return;
+      initAudio();
+      if (!audioCtx) return;
+      const freqs = [523.25, 659.25, 783.99, 1046.50];
+      freqs.forEach((freq, idx) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        const startTime = audioCtx.currentTime + idx * 0.06;
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, startTime);
+        gain.gain.setValueAtTime(0.25, startTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.25);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(startTime);
+        osc.stop(startTime + 0.25);
+      });
+    }
+
+    function playSoundHalve() {
+      if (!soundEnabled) return;
+      initAudio();
+      if (!audioCtx) return;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(500, audioCtx.currentTime);
+      osc.frequency.linearRampToValueAtTime(180, audioCtx.currentTime + 0.35);
+      gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.35);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.35);
+    }
+
+    function playSoundBankrupt() {
+      if (!soundEnabled) return;
+      initAudio();
+      if (!audioCtx) return;
+      const freqs = [311.13, 261.63, 196.00, 130.81];
+      freqs.forEach((freq) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(freq * 0.5, audioCtx.currentTime + 0.55);
+        gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.55);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.55);
+      });
+    }
+
+    function playSoundShuffle() {
+      if (!soundEnabled) return;
+      initAudio();
+      if (!audioCtx) return;
+      for (let i = 0; i < 6; i++) {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        const t = audioCtx.currentTime + i * 0.07;
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(300 + Math.random() * 400, t);
+        gain.gain.setValueAtTime(0.12, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(t);
+        osc.stop(t + 0.05);
+      }
+    }
+
+    function playSoundWin() {
+      if (!soundEnabled) return;
+      initAudio();
+      if (!audioCtx) return;
+      const notes = [
+        { f: 523.25, d: 0.1,  t: 0 },
+        { f: 659.25, d: 0.1,  t: 0.1 },
+        { f: 783.99, d: 0.1,  t: 0.2 },
+        { f: 1046.50, d: 0.35, t: 0.3 },
+        { f: 880.00, d: 0.15, t: 0.65 },
+        { f: 1046.50, d: 0.5,  t: 0.8 }
+      ];
+      notes.forEach((n) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        const startTime = audioCtx.currentTime + n.t;
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(n.f, startTime);
+        gain.gain.setValueAtTime(0.28, startTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, startTime + n.d);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(startTime);
+        osc.stop(startTime + n.d);
+      });
+    }
+
+    /* ============================================
        CARD CLICK
     ============================================ */
     function onCardClick(idx) {
@@ -757,12 +919,14 @@
       const wrap = grid.querySelector(`.card-wrap[data-idx="${idx}"]`);
       if (!wrap || wrap.classList.contains('is-flipped') || wrap.classList.contains('disabled')) return;
 
+      playSoundFlip();
       flipCard(wrap, idx);
       const card = deck[idx];
 
       if (card.type === 'cash') {
         balance += card.value;
         updateBalance('cash');
+        playSoundCash();
         showFloat('+' + fmt(card.value), 'cash');
         setStatus(`💵 Nhận được ${fmt(card.value)}! Số dư: ${fmt(balance)}`, true);
         updateProgress();
@@ -770,6 +934,7 @@
       } else if (card.type === 'halve') {
         balance = Math.floor(balance / 2);
         updateBalance('halve');
+        playSoundHalve();
         showFloat('÷ 2 !', 'halve');
         setStatus(`✂️ Bị giảm nửa! Còn lại: ${fmt(balance)}`, false);
         updateProgress();
@@ -778,6 +943,7 @@
         // BANKRUPT
         balance = 0;
         updateBalance('bankrupt');
+        playSoundBankrupt();
         showFloat('💀 PHÁ SẢN!', 'bankrupt');
         gameActive = false;
         btnCash.disabled = true;
@@ -804,6 +970,7 @@
        START GAME
     ============================================ */
     function startGame() {
+      playSoundShuffle();
       deck    = buildDeck();
       balance = 0;
       balDisp.textContent = '0 VND';
@@ -860,6 +1027,7 @@
       const amt   = document.getElementById('modal-amount');
 
       if (type === 'win') {
+        playSoundWin();
         icon.textContent  = balance > 0 ? '🎉' : '😅';
         title.textContent = balance > 0 ? 'Chúc mừng!' : 'Đã rút tiền!';
         title.className   = 'modal-title win';
@@ -868,6 +1036,7 @@
           : 'Rút tiền khi tay trắng — ít ra không phá sản! 😄';
         amt.textContent   = fmt(balance);
       } else {
+        playSoundBankrupt();
         icon.textContent  = '💀';
         title.textContent = 'Thua rồi!';
         title.className   = 'modal-title lose';
