@@ -550,6 +550,12 @@
   <!-- Floating cherry blossom petals -->
   <div class="petals" id="petals" aria-hidden="true"></div>
 
+  <!-- Background Music for Ngày Xuân Long Phụng Sum Vầy -->
+  <audio id="bgm" loop preload="auto">
+    <source src="audio/ngay-xuan-long-phung-sum-vay.mp3" type="audio/mpeg">
+    <source src="https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3" type="audio/mpeg">
+  </audio>
+
   <!-- Modal -->
   <div class="modal-overlay" id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title-text">
     <div class="modal">
@@ -777,7 +783,7 @@
     }
 
     /* ============================================
-       AUDIO SYSTEM (Web Audio API Synthesizer)
+       AUDIO SYSTEM (SFX + Background Music)
     ============================================ */
     let audioCtx = null;
     let soundEnabled = true;
@@ -790,6 +796,25 @@
       if (audioCtx && audioCtx.state === 'suspended') {
         audioCtx.resume();
       }
+      playBGM();
+    }
+
+    function playBGM() {
+      if (!soundEnabled) return;
+      const bgm = document.getElementById('bgm');
+      if (bgm && bgm.paused) {
+        bgm.volume = 0.45;
+        bgm.play().catch(() => {
+          // Autoplay blocked until user gesture
+        });
+      }
+    }
+
+    function stopBGM() {
+      const bgm = document.getElementById('bgm');
+      if (bgm) {
+        bgm.pause();
+      }
     }
 
     function toggleSound() {
@@ -797,6 +822,12 @@
       const btn = document.getElementById('btn-sound');
       if (btn) {
         btn.textContent = soundEnabled ? '🔊' : '🔇';
+      }
+      if (soundEnabled) {
+        initAudio();
+        playBGM();
+      } else {
+        stopBGM();
       }
     }
 
