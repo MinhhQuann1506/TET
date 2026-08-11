@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Lì Xì – Red Envelope 🧧</title>
+  <meta name="description" content="Game lật phong bì đỏ may mắn ngày Tết. Lật bài, nhận tiền, tránh phá sản!" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+
+  <style>
+    /* ============================================
+       RESET & ROOT
+    ============================================ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --red-deep:     #8B0000;
+      --red-mid:      #C0392B;
+      --gold-bright:  #FFD700;
+      --gold-mid:     #DAA520;
+      --gold-light:   #FFF3B0;
+      --bg-dark:      #110202;
+      --bg-card-back-top: #C0392B;
+      --bg-card-back-bot: #7B0000;
+      --radius:       12px;
+      --flip-dur:     0.6s;
+      /* safe area padding for notched phones */
+      --safe-top:    env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      touch-action: manipulation; /* prevent double-tap zoom */
+    }
+
+    body {
+      background: var(--bg-dark);
+      background-image:
+        radial-gradient(ellipse at 15% 10%, rgba(139,0,0,0.5) 0%, transparent 55%),
+        radial-gradient(ellipse at 85% 90%, rgba(184,134,11,0.25) 0%, transparent 55%);
+      font-family: 'Inter', sans-serif;
+      color: #FFF8E7;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ============================================
+       DECORATIVE LANTERNS (top corners, fixed)
+    ============================================ */
+    .lanterns {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      display: flex;
+      justify-content: space-between;
+      pointer-events: none;
+      z-index: 0;
+      padding: 0 1.5rem;
+    }
+    .lantern { width: 28px; display: flex; flex-direction: column; align-items: center; animation: sway 3s ease-in-out infinite alternate; }
+    .lantern:nth-child(2) { animation-delay: -1.5s; }
+    .lantern-string { width: 2px; height: 30px; background: linear-gradient(to bottom, rgba(218,165,32,0.8), transparent); }
+    .lantern-body {
+      width: 28px; height: 40px;
+      background: radial-gradient(ellipse at 35% 35%, #ff6b35, #c00, #8B0000);
+      border-radius: 50% / 40%;
+      box-shadow: 0 0 14px 4px rgba(255,80,0,0.45), inset 0 0 10px rgba(255,200,0,0.3);
+      position: relative;
+    }
+    .lantern-body::before, .lantern-body::after { content: ''; position: absolute; width: 100%; height: 5px; background: var(--gold-mid); border-radius: 3px; left: 0; }
+    .lantern-body::before { top: -3px; }
+    .lantern-body::after  { bottom: -3px; }
+    .lantern-tassel { width: 2px; height: 20px; background: linear-gradient(to bottom, var(--gold-mid), transparent); }
+    @keyframes sway { from { transform: rotate(-7deg); } to { transform: rotate(7deg); } }
+
+    /* Floating petals */
+    .petals { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+    .petal {
+      position: absolute; top: -12px;
+      width: 9px; height: 9px;
+      background: radial-gradient(circle at 40% 40%, #ffb3c1, #e63946);
+      border-radius: 50% 0 50% 0;
+      opacity: 0;
+      animation: petalFall linear infinite;
+    }
+    @keyframes petalFall {
+      0%   { opacity: 0;   transform: translateY(0)   rotate(0deg); }
+      8%   { opacity: 0.7; }
+      92%  { opacity: 0.4; }
+      100% { opacity: 0;   transform: translateY(105vh) rotate(600deg); }
+    }
+
+    /* ============================================
+       APP SHELL — fills 100dvh with no scroll
+    ============================================ */
+    .app {
+      position: relative;
+      z-index: 1;
+      height: 100dvh; /* dynamic viewport height — accounts for mobile browser chrome */
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      max-width: 540px;
+      margin: 0 auto;
+      padding-top: var(--safe-top);
+      padding-bottom: var(--safe-bottom);
+    }
+
+    /* ============================================
+       TOP BAR (branding)
+    ============================================ */
+    .top-bar {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.45rem 1rem 0.3rem;
+    }
+    .top-bar-emoji { font-size: 1.5rem; animation: bounce 2.5s ease-in-out infinite; }
+    @keyframes bounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+    .top-bar h1 {
+      font-family: 'Cinzel Decorative', cursive;
+      font-size: clamp(1rem, 4vw, 1.4rem);
+      background: linear-gradient(135deg, #FFD700 0%, #fff4a0 45%, #DAA520 80%, #FFD700 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      filter: drop-shadow(0 1px 6px rgba(255,215,0,0.5));
+      line-height: 1;
+    }
+    .top-bar-sub {
+      font-size: clamp(0.6rem, 2vw, 0.72rem);
+      color: rgba(255,243,176,0.55);
+      letter-spacing: 0.04em;
+      text-align: center;
+      padding-bottom: 0.1rem;
+    }
+    .top-bar-titles { display: flex; flex-direction: column; align-items: flex-start; }
+
+    /* ============================================
+       BALANCE BAR (sticky at top after top-bar)
+    ============================================ */
+    .balance-bar {
+      flex-shrink: 0;
+      background: linear-gradient(135deg, rgba(139,0,0,0.94), rgba(44,11,11,0.98));
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-top: 1px solid rgba(218,165,32,0.3);
+      border-bottom: 2px solid rgba(218,165,32,0.45);
+      padding: 0.45rem 0.85rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+    }
+    .bal-left { display: flex; flex-direction: column; min-width: 0; }
+    .bal-label {
+      font-size: 0.62rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: rgba(255,243,176,0.55);
+      white-space: nowrap;
+    }
+    .bal-amount {
+      font-family: 'Cinzel Decorative', cursive;
+      font-size: clamp(1.1rem, 5vw, 1.7rem);
+      color: var(--gold-bright);
+      filter: drop-shadow(0 0 8px rgba(255,215,0,0.55));
+      line-height: 1.1;
+      white-space: nowrap;
+    }
+    .bal-amount.pop      { animation: balPop 0.35s cubic-bezier(0.36,0.07,0.19,0.97); }
+    .bal-amount.halved   { color: #ff9500; }
+    .bal-amount.bankrupt { color: #ff3b30; }
+    @keyframes balPop {
+      0%  { transform: scale(1); }
+      40% { transform: scale(1.22); }
+      70% { transform: scale(0.96); }
+      100%{ transform: scale(1); }
+    }
+
+    .bal-right { display: flex; align-items: center; gap: 0.4rem; flex-shrink: 0; }
+
+    /* Cards remaining mini-progress */
+    .cards-left-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+    .cards-left-text { font-size: 0.62rem; color: rgba(255,243,176,0.55); white-space: nowrap; }
+    .cards-left-text span { color: var(--gold-bright); font-weight: 700; }
+    .prog-wrap { width: 70px; height: 4px; background: rgba(255,255,255,0.12); border-radius: 2px; overflow: hidden; }
+    .prog-bar  { height: 100%; background: linear-gradient(to right, var(--gold-bright), var(--gold-mid)); border-radius: 2px; transition: width 0.4s ease; }
+
+    /* ============================================
+       BUTTONS
+    ============================================ */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3em;
+      padding: 0.5rem 0.85rem;
+      border: none;
+      border-radius: 50px;
+      font-family: 'Inter', sans-serif;
+      font-size: clamp(0.7rem, 2.5vw, 0.82rem);
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn:active:not(:disabled) { transform: scale(0.93); }
+    .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    .btn-start {
+      background: linear-gradient(135deg, var(--gold-bright), var(--gold-mid));
+      color: #3b1f00;
+      box-shadow: 0 3px 14px rgba(255,215,0,0.45);
+    }
+    .btn-start:not(:disabled):hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(255,215,0,0.6); }
+
+    .btn-cashout {
+      background: linear-gradient(135deg, #27ae60, #1a7a44);
+      color: #e8ffe8;
+      box-shadow: 0 3px 14px rgba(39,174,96,0.4);
+    }
+    .btn-cashout:not(:disabled):hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(39,174,96,0.55); }
+
+    .btn-play-again {
+      background: linear-gradient(135deg, var(--gold-bright), #ff9500);
+      color: #3b1f00;
+      font-size: 1rem;
+      padding: 0.8rem 2rem;
+      box-shadow: 0 6px 20px rgba(255,180,0,0.5);
+    }
+    .btn-play-again:hover { transform: translateY(-2px) scale(1.03); box-shadow: 0 10px 28px rgba(255,180,0,0.65); }
+
+    /* ============================================
+       META BAR (legend + status, one line each)
+    ============================================ */
+    .meta-bar {
+      flex-shrink: 0;
+      padding: 0.3rem 0.75rem 0.2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+    .legend {
+      display: flex;
+      gap: 0.35rem;
+      justify-content: center;
+      flex-wrap: nowrap;
+    }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.2em;
+      padding: 0.18rem 0.55rem;
+      border-radius: 100px;
+      font-size: clamp(0.58rem, 1.8vw, 0.7rem);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .tag-cash     { background: rgba(39,174,96,0.2);  color: #5dffa8; border: 1px solid rgba(93,255,168,0.22); }
+    .tag-halve    { background: rgba(255,149,0,0.2);  color: #ffb347; border: 1px solid rgba(255,179,71,0.22); }
+    .tag-bankrupt { background: rgba(231,76,60,0.2);  color: #ff6b6b; border: 1px solid rgba(255,107,107,0.22); }
+
+    .status-bar {
+      text-align: center;
+      font-size: clamp(0.65rem, 2vw, 0.78rem);
+      color: rgba(255,243,176,0.55);
+      min-height: 1.2em;
+      line-height: 1.3;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      transition: color 0.3s;
+    }
+    .status-bar.hl { color: var(--gold-bright); }
+
+    /* ============================================
+       GRID AREA — takes all remaining space
+    ============================================ */
+    .grid-area {
+      flex: 1;
+      min-height: 0;          /* crucial — allows flex child to shrink below content size */
+      padding: 0.3rem 0.6rem 0.4rem;
+    }
+
+    /* The card grid fills the grid-area exactly */
+    .card-grid {
+      width: 100%;
+      height: 100%;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      grid-template-rows: repeat(4, 1fr);
+      gap: clamp(4px, 1.2vw, 8px);
+    }
+
+    /* ============================================
+       CARD — 3D CSS flip (no fixed aspect-ratio;
+       fills its grid cell entirely)
+    ============================================ */
+    .card-wrap {
+      perspective: 800px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      min-width: 0; min-height: 0; /* grid children need this */
+    }
+
+    .card-inner {
+      position: relative;
+      width: 100%; height: 100%;
+      transform-style: preserve-3d;
+      transition: transform var(--flip-dur) cubic-bezier(0.4,0,0.2,1);
+      border-radius: var(--radius);
+    }
+
+    .card-wrap.is-flipped .card-inner { transform: rotateY(180deg); }
+
+    .card-face, .card-back {
+      position: absolute;
+      inset: 0;
+      border-radius: var(--radius);
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: clamp(2px, 0.8vw, 5px);
+      overflow: hidden;
+    }
+
+    /* --- CARD BACK --- */
+    .card-back {
+      background: linear-gradient(145deg, var(--bg-card-back-top), var(--bg-card-back-bot));
+      border: 1.5px solid rgba(218,165,32,0.5);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.5), inset 0 0 0 3px rgba(218,165,32,0.14);
+    }
+    .card-back::before {
+      content: '';
+      position: absolute;
+      inset: 5px;
+      border: 1px solid rgba(218,165,32,0.28);
+      border-radius: calc(var(--radius) - 4px);
+    }
+    .card-back-icon { font-size: clamp(1rem, 4vw, 1.8rem); filter: drop-shadow(0 0 6px rgba(255,215,0,0.55)); z-index: 1; }
+    .card-back-char { font-family: 'Cinzel Decorative', cursive; font-size: clamp(0.4rem, 1.4vw, 0.65rem); color: rgba(255,215,0,0.7); letter-spacing: 0.05em; z-index: 1; }
+
+    /* --- CARD FACE --- */
+    .card-face { transform: rotateY(180deg); }
+
+    .card-face.type-cash {
+      background: linear-gradient(145deg, #1a4a2a, #0f2d18);
+      border: 1.5px solid rgba(93,255,168,0.38);
+      box-shadow: 0 4px 18px rgba(0,0,0,0.5), inset 0 0 20px rgba(39,174,96,0.1);
+    }
+    .card-face.type-halve {
+      background: linear-gradient(145deg, #3d2800, #221800);
+      border: 1.5px solid rgba(255,179,71,0.38);
+      box-shadow: 0 4px 18px rgba(0,0,0,0.5), inset 0 0 20px rgba(255,149,0,0.1);
+    }
+    .card-face.type-bankrupt {
+      background: linear-gradient(145deg, #2c0808, #180303);
+      border: 1.5px solid rgba(255,107,107,0.42);
+      box-shadow: 0 4px 18px rgba(0,0,0,0.5), inset 0 0 20px rgba(231,76,60,0.12);
+    }
+
+    /* Inner border decoration on face */
+    .card-face::after {
+      content: '';
+      position: absolute;
+      inset: 4px;
+      border-radius: calc(var(--radius) - 4px);
+    }
+    .type-cash::after     { border: 1px solid rgba(93,255,168,0.16); }
+    .type-halve::after    { border: 1px solid rgba(255,179,71,0.16); }
+    .type-bankrupt::after { border: 1px solid rgba(255,107,107,0.16); }
+
+    .card-face-icon  { font-size: clamp(1rem, 4vw, 1.8rem); z-index: 1; line-height: 1; }
+    .card-face-label {
+      font-family: 'Cinzel Decorative', cursive;
+      font-size: clamp(0.42rem, 1.5vw, 0.72rem);
+      font-weight: 700;
+      z-index: 1;
+      text-align: center;
+      line-height: 1.25;
+      padding: 0 3px;
+    }
+    .type-cash     .card-face-label { color: #5dffa8; }
+    .type-halve    .card-face-label { color: #ffb347; }
+    .type-bankrupt .card-face-label { color: #ff6b6b; }
+
+    /* Hover lift on unrevealed cards */
+    .card-wrap:not(.is-flipped):not(.disabled):hover .card-inner { transform: translateY(-3px); }
+    .card-wrap:not(.is-flipped):not(.disabled):hover .card-back  { border-color: rgba(255,215,0,0.7); box-shadow: 0 0 16px rgba(255,215,0,0.3), 0 6px 20px rgba(0,0,0,0.5); }
+    .card-wrap.disabled { cursor: default; }
+
+    /* Pop on reveal */
+    .card-wrap.just-revealed .card-inner { animation: revealPop 0.3s 0.28s cubic-bezier(0.36,0.07,0.19,0.97) both; }
+    @keyframes revealPop {
+      0%  { transform: rotateY(180deg) scale(1); }
+      50% { transform: rotateY(180deg) scale(1.1); }
+      100%{ transform: rotateY(180deg) scale(1); }
+    }
+
+    /* Shuffle animation */
+    .card-wrap.shuffling .card-inner { animation: shuffleAnim 0.45s ease-in-out; }
+    @keyframes shuffleAnim {
+      0%  { transform: rotateY(0deg)   scale(1);    }
+      30% { transform: rotateY(90deg)  scale(0.82) translateY(-6px); }
+      60% { transform: rotateY(180deg) scale(0.82); }
+      100%{ transform: rotateY(0deg)   scale(1);    }
+    }
+
+    /* Focus ring for keyboard */
+    .card-wrap:focus-visible .card-back { outline: 2.5px solid var(--gold-bright); outline-offset: 2px; }
+
+    /* ============================================
+       FLOATING NOTIFICATION
+    ============================================ */
+    .float-notif {
+      position: fixed;
+      left: 50%; top: 42%;
+      transform: translateX(-50%);
+      font-family: 'Cinzel Decorative', cursive;
+      font-size: clamp(1.1rem, 5vw, 1.7rem);
+      font-weight: 900;
+      pointer-events: none;
+      z-index: 9000;
+      opacity: 0;
+      animation: floatUp 1.5s cubic-bezier(0.22,1,0.36,1) forwards;
+    }
+    .float-notif.cash     { color: #5dffa8; text-shadow: 0 0 18px rgba(93,255,168,0.8); }
+    .float-notif.halve    { color: #ffb347; text-shadow: 0 0 18px rgba(255,179,71,0.8); }
+    .float-notif.bankrupt { color: #ff6b6b; text-shadow: 0 0 18px rgba(255,107,107,0.9); }
+    @keyframes floatUp {
+      0%   { opacity: 0; transform: translateX(-50%) translateY(0)    scale(0.55); }
+      18%  { opacity: 1; transform: translateX(-50%) translateY(-16px) scale(1.05); }
+      60%  { opacity: 1; transform: translateX(-50%) translateY(-50px) scale(1);   }
+      100% { opacity: 0; transform: translateX(-50%) translateY(-85px) scale(0.9); }
+    }
+
+    /* ============================================
+       MODAL
+    ============================================ */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(8,1,1,0.85);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 9999;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.35s;
+      padding: 1rem;
+    }
+    .modal-overlay.active { opacity: 1; pointer-events: all; }
+
+    .modal {
+      background: linear-gradient(145deg, #1f0606, #2e0c0c, #1f0606);
+      border: 2px solid rgba(218,165,32,0.5);
+      border-radius: 22px;
+      padding: 2rem 1.75rem;
+      max-width: 360px; width: 100%;
+      text-align: center;
+      box-shadow: 0 0 60px rgba(218,165,32,0.18), 0 30px 80px rgba(0,0,0,0.85);
+      transform: scale(0.78) translateY(28px);
+      transition: transform 0.4s cubic-bezier(0.34,1.56,0.64,1), opacity 0.35s;
+      opacity: 0;
+    }
+    .modal-overlay.active .modal { transform: scale(1) translateY(0); opacity: 1; }
+
+    .modal-icon {
+      font-size: 3.5rem; line-height: 1; display: block; margin-bottom: 0.6rem;
+      animation: iconPop 0.55s 0.25s cubic-bezier(0.36,0.07,0.19,0.97) both;
+    }
+    @keyframes iconPop {
+      0%  { transform: scale(0) rotate(-15deg); }
+      70% { transform: scale(1.18) rotate(5deg); }
+      100%{ transform: scale(1) rotate(0deg); }
+    }
+
+    .modal-title {
+      font-family: 'Cinzel Decorative', cursive;
+      font-size: clamp(1.2rem, 5vw, 1.75rem);
+      margin-bottom: 0.4rem;
+    }
+    .modal-title.win  { color: var(--gold-bright); filter: drop-shadow(0 0 10px rgba(255,215,0,0.55)); }
+    .modal-title.lose { color: #ff6b6b;             filter: drop-shadow(0 0 10px rgba(255,107,107,0.55)); }
+
+    .modal-sub { font-size: 0.88rem; color: rgba(255,243,176,0.65); margin-bottom: 1.2rem; line-height: 1.55; }
+
+    .modal-divider { width: 50px; height: 2px; background: linear-gradient(to right, transparent, var(--gold-mid), transparent); margin: 0 auto 1.2rem; }
+
+    .modal-amount {
+      font-family: 'Cinzel Decorative', cursive;
+      font-size: clamp(1.8rem, 7vw, 2.6rem);
+      color: var(--gold-bright);
+      filter: drop-shadow(0 0 16px rgba(255,215,0,0.65));
+      margin-bottom: 1.5rem;
+      animation: amtGlow 2s ease-in-out infinite alternate;
+    }
+    @keyframes amtGlow {
+      from { filter: drop-shadow(0 0 8px rgba(255,215,0,0.45)); }
+      to   { filter: drop-shadow(0 0 24px rgba(255,215,0,0.9)); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Decorative fixed lanterns -->
+  <div class="lanterns" aria-hidden="true">
+    <div class="lantern"><div class="lantern-string"></div><div class="lantern-body"></div><div class="lantern-tassel"></div></div>
+    <div class="lantern"><div class="lantern-string"></div><div class="lantern-body"></div><div class="lantern-tassel"></div></div>
+  </div>
+
+  <!-- Floating cherry blossom petals -->
+  <div class="petals" id="petals" aria-hidden="true"></div>
+
+  <!-- Modal -->
+  <div class="modal-overlay" id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title-text">
+    <div class="modal">
+      <span class="modal-icon"  id="modal-icon"       aria-hidden="true"></span>
+      <h2 class="modal-title"   id="modal-title-text"></h2>
+      <p class="modal-sub"      id="modal-subtitle"></p>
+      <div class="modal-divider"></div>
+      <div class="modal-amount" id="modal-amount" aria-live="polite"></div>
+      <button class="btn btn-play-again" id="btn-play-again" onclick="playAgain()">🔄 Chơi lại</button>
+    </div>
+  </div>
+
+  <!-- ==================== APP SHELL ==================== -->
+  <div class="app">
+
+    <!-- Top branding bar -->
+    <div class="top-bar">
+      <span class="top-bar-emoji" aria-hidden="true">🧧</span>
+      <div class="top-bar-titles">
+        <h1>Lì Xì – Red Envelope</h1>
+        <p class="top-bar-sub">Chúc Mừng Năm Mới 🐍 · Happy Lunar New Year</p>
+      </div>
+    </div>
+
+    <!-- Sticky balance + controls -->
+    <div class="balance-bar" role="status" aria-live="polite">
+      <div class="bal-left">
+        <span class="bal-label">💰 Số dư hiện tại</span>
+        <span class="bal-amount" id="balance-display">0 VND</span>
+      </div>
+      <div class="bal-right">
+        <div class="cards-left-wrap">
+          <span class="cards-left-text">Còn: <span id="cards-left">20</span>/20</span>
+          <div class="prog-wrap"><div class="prog-bar" id="prog-bar" style="width:100%"></div></div>
+        </div>
+        <button class="btn btn-start"   id="btn-start"   onclick="startGame()">▶ Bắt đầu</button>
+        <button class="btn btn-cashout" id="btn-cashout" onclick="cashOut()" disabled>💸 Rút tiền</button>
+      </div>
+    </div>
+
+    <!-- Legend + status -->
+    <div class="meta-bar">
+      <div class="legend" aria-label="Loại bài">
+        <span class="tag tag-cash">💵 ×12 Tiền mặt</span>
+        <span class="tag tag-halve">÷2 ×6 Giảm nửa</span>
+        <span class="tag tag-bankrupt">💀 ×2 Phá sản</span>
+      </div>
+      <p class="status-bar" id="status-bar">Xem trước bộ bài → nhấn <strong>Bắt đầu</strong> để chơi!</p>
+    </div>
+
+    <!-- Card grid — takes all remaining height -->
+    <main class="grid-area">
+      <div class="card-grid" id="card-grid" aria-label="Lưới bài"></div>
+    </main>
+
+  </div><!-- /app -->
+
+  <script>
+    /* ============================================
+       CONSTANTS
+    ============================================ */
+    const NUM_CASH     = 12;
+    const NUM_HALVE    = 6;
+    const NUM_BANKRUPT = 2;
+    const TOTAL        = NUM_CASH + NUM_HALVE + NUM_BANKRUPT; // 20
+
+    /* ============================================
+       STATE
+    ============================================ */
+    let deck       = [];
+    let balance    = 0;
+    let gameActive = false;
+
+    /* ============================================
+       DOM REFS
+    ============================================ */
+    const grid      = document.getElementById('card-grid');
+    const balDisp   = document.getElementById('balance-display');
+    const cardsLeft = document.getElementById('cards-left');
+    const progBar   = document.getElementById('prog-bar');
+    const statusEl  = document.getElementById('status-bar');
+    const btnStart  = document.getElementById('btn-start');
+    const btnCash   = document.getElementById('btn-cashout');
+    const modalEl   = document.getElementById('modal');
+
+    /* ============================================
+       FORMAT VND
+    ============================================ */
+    function fmt(v) {
+      if (v >= 1000000) { const m = v / 1000000; return (Number.isInteger(m) ? m : m.toFixed(1)) + 'M VND'; }
+      if (v >= 1000)    return (v / 1000) + 'k VND';
+      return v + ' VND';
+    }
+
+    /* ============================================
+       FISHER–YATES SHUFFLE
+    ============================================ */
+    function shuffle(arr) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    /* ============================================
+       BUILD DECK
+    ============================================ */
+    function buildDeck() {
+      const d = [];
+      // 12 lá Tiền mặt cố định (Tổng = 220k VND):
+      // - 2 ô 50k (= 100k)
+      for (let i = 0; i < 2; i++) d.push({ type: 'cash', value: 50000 });
+      // - 3 ô 20k (= 60k)
+      for (let i = 0; i < 3; i++) d.push({ type: 'cash', value: 20000 });
+      // - 5 ô 10k (= 50k)
+      for (let i = 0; i < 5; i++) d.push({ type: 'cash', value: 10000 });
+      // - 2 ô 5k  (= 10k)
+      for (let i = 0; i < 2; i++) d.push({ type: 'cash', value: 5000 });
+
+      // 6 lá Giảm nửa
+      for (let i = 0; i < NUM_HALVE;    i++) d.push({ type: 'halve',    value: 0 });
+      // 2 lá Phá sản
+      for (let i = 0; i < NUM_BANKRUPT; i++) d.push({ type: 'bankrupt', value: 0 });
+
+      return shuffle(d);
+    }
+
+    /* ============================================
+       CARD CONFIG
+    ============================================ */
+    function cfg(card) {
+      return {
+        cash:     { icon: '💵', label: fmt(card.value), css: 'type-cash'     },
+        halve:    { icon: '✂️', label: '÷2 Giảm!',     css: 'type-halve'    },
+        bankrupt: { icon: '💀', label: 'PHÁ SẢN!',      css: 'type-bankrupt' }
+      }[card.type];
+    }
+
+    /* ============================================
+       RENDER CARDS
+       preview=true  → face-up (see all cards)
+       preview=false → cards face-down (during play)
+    ============================================ */
+    function renderCards(preview) {
+      grid.innerHTML = '';
+      deck.forEach((card, idx) => {
+        const c    = cfg(card);
+        const wrap = document.createElement('div');
+        wrap.className   = 'card-wrap' + (preview ? ' is-flipped disabled' : '');
+        wrap.dataset.idx = idx;
+        wrap.setAttribute('role', 'button');
+        wrap.setAttribute('tabindex', preview ? '-1' : '0');
+        wrap.setAttribute('aria-label', preview ? `${card.type}: ${c.label}` : 'Phong bì ẩn');
+        wrap.innerHTML = `
+          <div class="card-inner">
+            <div class="card-back" aria-hidden="true">
+              <span class="card-back-icon">🧧</span>
+              <span class="card-back-char">Lì Xì</span>
+            </div>
+            <div class="card-face ${c.css}" aria-hidden="true">
+              <span class="card-face-icon">${c.icon}</span>
+              <span class="card-face-label">${c.label}</span>
+            </div>
+          </div>`;
+
+        if (!preview) {
+          wrap.addEventListener('click',   () => onCardClick(idx));
+          wrap.addEventListener('keydown', e => { if (e.key==='Enter'||e.key===' '){ e.preventDefault(); onCardClick(idx); } });
+        }
+        grid.appendChild(wrap);
+      });
+    }
+
+    /* ============================================
+       FLIP A CARD FACE-UP
+    ============================================ */
+    function flipCard(wrap, idx) {
+      wrap.classList.add('is-flipped', 'just-revealed', 'disabled');
+      wrap.setAttribute('tabindex', '-1');
+      const c = cfg(deck[idx]);
+      wrap.setAttribute('aria-label', `${deck[idx].type}: ${c.label}`);
+      setTimeout(() => wrap.classList.remove('just-revealed'), 900);
+    }
+
+    /* ============================================
+       UPDATE BALANCE
+    ============================================ */
+    function updateBalance(type) {
+      balDisp.textContent = fmt(balance);
+      balDisp.classList.remove('halved', 'bankrupt', 'pop');
+      void balDisp.offsetWidth; // reflow to restart animation
+      if (type === 'cash')     balDisp.classList.add('pop');
+      if (type === 'halve')  { balDisp.classList.add('halved', 'pop'); }
+      if (type === 'bankrupt') balDisp.classList.add('bankrupt');
+    }
+
+    /* ============================================
+       UPDATE PROGRESS
+    ============================================ */
+    function updateProgress() {
+      const rem = grid.querySelectorAll('.card-wrap:not(.is-flipped)').length;
+      cardsLeft.textContent  = rem;
+      progBar.style.width    = (rem / TOTAL * 100) + '%';
+    }
+
+    /* ============================================
+       FLOATING NOTIFICATION
+    ============================================ */
+    function showFloat(text, type) {
+      const el = document.createElement('div');
+      el.className = `float-notif ${type}`;
+      el.textContent = text;
+      document.body.appendChild(el);
+      el.addEventListener('animationend', () => el.remove());
+    }
+
+    /* ============================================
+       STATUS
+    ============================================ */
+    function setStatus(html, hl = false) {
+      statusEl.innerHTML  = html;
+      statusEl.className  = 'status-bar' + (hl ? ' hl' : '');
+    }
+
+    /* ============================================
+       CARD CLICK
+    ============================================ */
+    function onCardClick(idx) {
+      if (!gameActive) return;
+      const wrap = grid.querySelector(`.card-wrap[data-idx="${idx}"]`);
+      if (!wrap || wrap.classList.contains('is-flipped') || wrap.classList.contains('disabled')) return;
+
+      flipCard(wrap, idx);
+      const card = deck[idx];
+
+      if (card.type === 'cash') {
+        balance += card.value;
+        updateBalance('cash');
+        showFloat('+' + fmt(card.value), 'cash');
+        setStatus(`💵 Nhận được ${fmt(card.value)}! Số dư: ${fmt(balance)}`, true);
+        updateProgress();
+
+      } else if (card.type === 'halve') {
+        balance = Math.floor(balance / 2);
+        updateBalance('halve');
+        showFloat('÷ 2 !', 'halve');
+        setStatus(`✂️ Bị giảm nửa! Còn lại: ${fmt(balance)}`, false);
+        updateProgress();
+
+      } else {
+        // BANKRUPT
+        balance = 0;
+        updateBalance('bankrupt');
+        showFloat('💀 PHÁ SẢN!', 'bankrupt');
+        gameActive = false;
+        btnCash.disabled = true;
+        setStatus('💀 Phá sản! Lật hết các bài còn lại…', false);
+        revealAll(() => showModal('lose'));
+      }
+    }
+
+    /* ============================================
+       REVEAL ALL REMAINING
+    ============================================ */
+    function revealAll(cb) {
+      const remaining = Array.from(grid.querySelectorAll('.card-wrap:not(.is-flipped)'));
+      if (!remaining.length) { setTimeout(cb, 250); return; }
+      remaining.forEach((wrap, i) => {
+        setTimeout(() => {
+          flipCard(wrap, parseInt(wrap.dataset.idx, 10));
+          if (i === remaining.length - 1) { updateProgress(); setTimeout(cb, 380); }
+        }, i * 80);
+      });
+    }
+
+    /* ============================================
+       START GAME
+    ============================================ */
+    function startGame() {
+      deck    = buildDeck();
+      balance = 0;
+      balDisp.textContent = '0 VND';
+      balDisp.className   = 'bal-amount';
+      btnStart.disabled   = true;
+      btnCash.disabled    = true;
+
+      // Show face-up briefly then shuffle to face-down
+      renderCards(true);
+      setStatus('🀄 Đang xáo bài…', false);
+
+      const STAGGER = 42;
+      grid.querySelectorAll('.card-wrap').forEach((wrap, i) => {
+        setTimeout(() => {
+          wrap.classList.add('shuffling');
+          wrap.classList.remove('disabled');
+
+          wrap.addEventListener('animationend', () => {
+            wrap.classList.remove('shuffling', 'is-flipped');
+            wrap.setAttribute('tabindex', '0');
+            wrap.setAttribute('aria-label', 'Phong bì ẩn');
+            wrap.addEventListener('click',   () => onCardClick(i));
+            wrap.addEventListener('keydown', e => { if (e.key==='Enter'||e.key===' '){ e.preventDefault(); onCardClick(i); } });
+
+            if (i === TOTAL - 1) {
+              gameActive       = true;
+              btnCash.disabled = false;
+              setStatus('🎴 Nhấn bất kỳ phong bì nào để mở! Chúc may mắn 🍀', true);
+              updateProgress();
+            }
+          }, { once: true });
+        }, i * STAGGER);
+      });
+    }
+
+    /* ============================================
+       CASH OUT
+    ============================================ */
+    function cashOut() {
+      if (!gameActive) return;
+      gameActive       = false;
+      btnCash.disabled = true;
+      setStatus('💸 Đang rút tiền… Lật hết bài còn lại!', true);
+      revealAll(() => { fireConfetti(); showModal('win'); });
+    }
+
+    /* ============================================
+       MODAL
+    ============================================ */
+    function showModal(type) {
+      const icon  = document.getElementById('modal-icon');
+      const title = document.getElementById('modal-title-text');
+      const sub   = document.getElementById('modal-subtitle');
+      const amt   = document.getElementById('modal-amount');
+
+      if (type === 'win') {
+        icon.textContent  = balance > 0 ? '🎉' : '😅';
+        title.textContent = balance > 0 ? 'Chúc mừng!' : 'Đã rút tiền!';
+        title.className   = 'modal-title win';
+        sub.textContent   = balance > 0
+          ? 'Bạn đã biết dừng đúng lúc. Thắng lợi rồi! 🧧'
+          : 'Rút tiền khi tay trắng — ít ra không phá sản! 😄';
+        amt.textContent   = fmt(balance);
+      } else {
+        icon.textContent  = '💀';
+        title.textContent = 'Thua rồi!';
+        title.className   = 'modal-title lose';
+        sub.textContent   = 'Lật phải bài Phá Sản, mất tất cả! Năm sau chơi lại nhé 🏮';
+        amt.textContent   = '0 VND';
+      }
+
+      modalEl.classList.add('active');
+      document.getElementById('btn-play-again').focus();
+    }
+
+    /* ============================================
+       PLAY AGAIN
+    ============================================ */
+    function playAgain() {
+      modalEl.classList.remove('active');
+      gameActive          = false;
+      balance             = 0;
+      deck                = buildDeck();
+      balDisp.textContent = '0 VND';
+      balDisp.className   = 'bal-amount';
+      cardsLeft.textContent = TOTAL;
+      progBar.style.width   = '100%';
+      btnStart.disabled     = false;
+      btnCash.disabled      = true;
+      renderCards(true); // preview face-up
+      setStatus('Xem trước bộ bài → nhấn <strong>Bắt đầu</strong> để chơi!', false);
+    }
+
+    /* ============================================
+       CONFETTI
+    ============================================ */
+    function fireConfetti() {
+      const colors = ['#FFD700','#FF0000','#FF6B6B','#FFB347','#FFF3B0','#FF4500'];
+      const z      = 9998;
+      const fire   = (r, o) => confetti(Object.assign({ zIndex: z, colors }, o, { particleCount: Math.floor(220 * r) }));
+
+      fire(0.25, { spread: 26, startVelocity: 55, origin: { x: 0.2, y: 0.6 } });
+      fire(0.2,  { spread: 60,                    origin: { x: 0.5, y: 0.5 } });
+      fire(0.35, { spread: 100, decay: 0.91, scalar: 0.8, origin: { x: 0.8, y: 0.6 } });
+      fire(0.1,  { spread: 120, startVelocity: 25, decay: 0.92, scalar: 1.2, origin: { x: 0.5, y: 0.7 } });
+      setTimeout(() => {
+        confetti({ zIndex: z, colors, particleCount: 90, angle: 60,  spread: 55, origin: { x: 0, y: 0.65 } });
+        confetti({ zIndex: z, colors, particleCount: 90, angle: 120, spread: 55, origin: { x: 1, y: 0.65 } });
+      }, 350);
+    }
+
+    /* ============================================
+       SPAWN PETALS
+    ============================================ */
+    function spawnPetals() {
+      const c = document.getElementById('petals');
+      for (let i = 0; i < 18; i++) {
+        const p = document.createElement('div');
+        const s = 6 + Math.random() * 8;
+        p.className = 'petal';
+        p.style.cssText = `width:${s}px;height:${s}px;left:${Math.random()*100}%;animation-duration:${6+Math.random()*9}s;animation-delay:${Math.random()*12}s;transform:rotate(${Math.random()*360}deg);`;
+        c.appendChild(p);
+      }
+    }
+
+    /* ============================================
+       INIT
+    ============================================ */
+    (function init() {
+      spawnPetals();
+      deck = buildDeck();
+      renderCards(true); // show face-up preview
+    })();
+  </script>
+</body>
+</html>
