@@ -550,8 +550,11 @@
   <!-- Floating cherry blossom petals -->
   <div class="petals" id="petals" aria-hidden="true"></div>
 
-  <!-- Background Music Playlist Player -->
-  <audio id="bgm" preload="auto"></audio>
+  <!-- Background Music Player (Nhạc Xổ Số Kiến Thiết Miền Bắc) -->
+  <audio id="bgm" loop preload="auto">
+    <source src="audio/Nhạc Xổ số Kiến thiết miền Bắc Bản kinh điển - KHÔNG QUẢNG CÁO - (64 Kbps).mp3" type="audio/mpeg">
+    <source src="audio/1.mp3" type="audio/mpeg">
+  </audio>
 
   <!-- Modal -->
   <div class="modal-overlay" id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title-text">
@@ -780,27 +783,10 @@
     }
 
     /* ============================================
-       AUDIO SYSTEM (SFX + Random 5-Track Playlist)
+       AUDIO SYSTEM (SFX + Background Music)
     ============================================ */
     let audioCtx = null;
     let soundEnabled = true;
-    const PLAYLIST = [
-      'audio/1.mp3',
-      'audio/2.mp3',
-      'audio/3.mp3',
-      'audio/4.mp3',
-      'audio/5.mp3'
-    ];
-    let currentTrackIdx = -1;
-
-    function getRandomTrack() {
-      let nextIdx;
-      do {
-        nextIdx = Math.floor(Math.random() * PLAYLIST.length);
-      } while (nextIdx === currentTrackIdx && PLAYLIST.length > 1);
-      currentTrackIdx = nextIdx;
-      return PLAYLIST[nextIdx];
-    }
 
     function initAudio() {
       if (!audioCtx) {
@@ -818,21 +804,13 @@
       const bgm = document.getElementById('bgm');
       if (!bgm) return;
 
-      if (!bgm.getAttribute('src') || bgm.ended) {
-        bgm.src = getRandomTrack();
+      bgm.volume = 0.55;
+      bgm.loop   = true;
+      if (bgm.paused) {
+        bgm.play().catch(() => {
+          // Autoplay policy fallback handles first touch
+        });
       }
-
-      bgm.volume = 0.45;
-      bgm.play().catch(() => {
-        // Autoplay blocked until user gesture
-      });
-
-      bgm.onended = () => {
-        if (soundEnabled) {
-          bgm.src = getRandomTrack();
-          bgm.play().catch(() => {});
-        }
-      };
     }
 
     function stopBGM() {
